@@ -58,11 +58,11 @@ songplay_table_create = ("""
 CREATE TABLE IF NOT EXISTS songplays(
     songplay_id integer identity(0,1) primary key not null,
     start_time timestamp,
-    user_id integer,
+    user_id integer NOT NULL,
     session_id integer,
     level varchar(10),
-    song_id varchar(50),
-    artist_id varchar(50) distkey,
+    song_id varchar(50) NOT NULL,
+    artist_id varchar(50) distkey NOT NULL,
     location varchar(255),
     user_agent varchar(500),
 	FOREIGN KEY (user_id) REFERENCES users (user_id),
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS users(
     user_id integer primary key not null,
     first_name varchar(50),
     last_name varchar(50),
-    gender char(1),
+    gender varchar(10),
     level varchar(10) not null sortkey
 )
 diststyle all;
@@ -137,7 +137,7 @@ copy staging_songs
 # FINAL TABLES
 songplay_table_insert = ("""        
 insert into songplays (start_time, user_id, session_id, level, song_id, artist_id, location, user_agent)
-       (select timestamp 'epoch' + ts/1000 * interval '1 second' as start_time, 
+       (select distinct timestamp 'epoch' + ts/1000 * interval '1 second' as start_time, 
         user_id, session_id, level, stgs.song_id, stgs.artist_id, location, user_agent
         from staging_events stge 
         left outer join staging_songs stgs on stge.song = stgs.title and stge.artist = stgs.artist_name
@@ -151,7 +151,7 @@ insert into users(user_id, first_name, last_name, gender, level)
 
 song_table_insert = ("""
 insert into songs(song_id, title, artist_id, year, duration) 
-(select song_id, title, artist_id, year, duration from staging_songs);
+(select distinct song_id, title, artist_id, year, duration from staging_songs);
 """)
 
 artist_table_insert = ("""
@@ -161,7 +161,7 @@ insert into artists (artist_id, artist_name, artist_location, artist_latitude, a
 
 time_table_insert = ("""
 insert into time (start_time, hour, day, week, month, year, weekday) 
-	(select timestamp 'epoch' + ts/1000 * interval '1 second' as start_time, 
+	(select distinct timestamp 'epoch' + ts/1000 * interval '1 second' as start_time, 
      date_part(hour, start_time) as hour,
 	 date_part(day, start_time) as day,
      date_part(week, start_time) as week,
